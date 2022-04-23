@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ProcessPoolExecutor, Executor
+from typing import List
 
 import aiohttp
 from bs4 import BeautifulSoup, element
@@ -12,6 +13,12 @@ TOPIC_TITLE = "li > dl > dt > div > a.topictitle"
 TOPIC_LAST_TIME = "li > dl > dd.lastpost > span > time"
 TOPIC_LAST_UNAME1 = "li > dl > dd.lastpost > span > a.username"
 TOPIC_LAST_UNAME2 = "li > dl > dd.lastpost > span > a.username-coloured"
+
+POSTS_SELECTOR = "#page-body > div.post"
+# POST_UNAME = "div.post > div > dl > dt > a"
+POST_AUTHOR = "div.post > div.inner > dl > dt > a"
+POST_TIME = "div.post > div.inner > div.postbody > div > p.author > time"
+POST_CONTENT = "div.post > div.inner > div.postbody > div > div.content"
 
 
 class Pages:
@@ -37,6 +44,36 @@ def get_topics_info(page: BeautifulSoup):
             last_message["time"] = last_message_time.attrs.get("datetime")
             topics.append(info)
     return topics
+
+
+def get_topic_posts(page: BeautifulSoup):
+    posts_elements = page.select(POSTS_SELECTOR)
+    posts = []
+    for post_el in posts_elements:
+        post = {}
+        post["author"] = author = {}
+        post_author = post_el.select_one(POST_AUTHOR)
+        author["link"] = post_author.attrs.get("href")
+        author["name"] = post_author.text
+        post_time = post_el.select_one(POST_TIME)
+        post["time"] = post_time.attrs.get("datetime")
+        content = post_el.select_one(POST_CONTENT)
+        post["text_rows"] = get_rows(content)
+        posts.append(post)
+    return posts
+
+
+def get_rows(el: element.Tag) -> List[str]:
+    rows = []
+    for child in el.children:
+        if isinstance(child, element.Tag):
+            text = child.text
+            if text:
+                rows.append(text)
+        elif isinstance(child, str):
+            if child:
+                rows.append(child)
+    return rows
 
 
 if __name__ == "__main__":
