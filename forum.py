@@ -1,6 +1,9 @@
 import asyncio
 from concurrent.futures import Executor, ProcessPoolExecutor
-from typing import List, Union
+from functools import wraps, partial
+
+from typing import Any, Optional, TypeVar, Union
+from typing import Callable, Coroutine, List
 
 import aiohttp
 from bs4 import BeautifulSoup, element
@@ -20,10 +23,22 @@ POST_AUTHOR = "div.post > div.inner > dl > dt > a"
 POST_TIME = "div.post > div.inner > div.postbody > div > p.author > time"
 POST_CONTENT = "div.post > div.inner > div.postbody > div > div.content"
 
+T = TypeVar("T")
+
 
 class Pages:
     MAIN = "https://lizaalert.org/forum/"
     ACTIVE_SEARCHES = "https://lizaalert.org/forum/viewforum.php?f=276"
+
+
+def as_async(fn: Callable[..., T], executor: Optional[Executor] = None) -> Callable[..., Coroutine[Any, Any, T]]:
+    @wraps(fn)
+    async def wrapped(*args, **kwargs):
+        loop = asyncio.get_running_loop()
+        f = partial(fn, *args, **kwargs)
+        fut = loop.run_in_executor(executor, f)
+        return await fut
+    return wrapped
 
 
 def parse_topics_list(content: Union[str, bytes], features="lxml"):
