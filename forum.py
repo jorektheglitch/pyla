@@ -11,6 +11,14 @@ from bs4 import BeautifulSoup, element
 
 PARSING_EXECUTOR = ProcessPoolExecutor()
 
+SECTIONS_SELECTOR = "#page-body > div.forabg > div.inner"
+SECTION_TITLE = "div > ul.topiclist > li.header > dl > dt > div > a"
+FORUMS_SELECTOR = "div > ul.topiclist.forums > li.row > dl.row-item"
+FORUM_TITLE = "dl > dt > div > a.forumtitle"
+FORUM_LAST_TIME = "dl > dd.lastpost > span > time"
+FORUM_LAST_TITLE = "dl > dd.lastpost > span > a.lastsubject"
+FORUM_LAST_USER = "dl > dd.lastpost > span > a.lastsubject.username"
+
 TOPICS_SELECTOR = "#page-body > div.forumbg > div > ul.topiclist.topics > li.row"
 TOPIC_TITLE = "li > dl > dt > div > a.topictitle"
 TOPIC_LAST_TIME = "li > dl > dd.lastpost > span > time"
@@ -39,6 +47,34 @@ def as_async(fn: Callable[..., T], executor: Optional[Executor] = None) -> Calla
         fut = loop.run_in_executor(executor, f)
         return await fut
     return wrapped
+
+
+def parse_forum_sections(content: Union[str, bytes], features="lxml"):
+    page = BeautifulSoup(content, features)
+    sections_elements = page.select(SECTIONS_SELECTOR)
+    sections = []
+    for section_el in sections_elements:
+        section = {}
+        section_title = section_el.select_one(SECTION_TITLE)
+        section["title"] = section_title.text
+        section["link"] = section_title.attrs.get("href")
+        forums_elements = section_el.select(FORUMS_SELECTOR)
+        section["forums"] = forums = []
+        for forum_el in forums_elements:
+            forum = {}
+            forum_title = forum_el.select_one(FORUM_TITLE)
+            forum["title"] = forum_title.text
+            forum["link"] = forum_title.attrs.get("href")
+            forum["last_message"] = last_message = {}
+            last_message_time = forum_el.select_one(FORUM_LAST_TIME)
+            last_message_from = forum_el.select_one(FORUM_LAST_USER)
+            last_message["from"] = message_from = {}
+            message_from["username"] = last_message_from.text
+            message_from["link"] = last_message_from.attrs.get("datetimme")
+            last_message["time"] = last_message_time.attrs.get("datetime")
+            forums.append(forum)
+        sections.append(section)
+    return sections
 
 
 def parse_topics_list(content: Union[str, bytes], features="lxml"):
