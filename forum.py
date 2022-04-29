@@ -1,5 +1,5 @@
 import asyncio
-from concurrent.futures import ProcessPoolExecutor, Executor
+from concurrent.futures import Executor, ProcessPoolExecutor
 from typing import List, Union
 
 import aiohttp
