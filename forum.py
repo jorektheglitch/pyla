@@ -1,6 +1,6 @@
 import asyncio
 from concurrent.futures import ProcessPoolExecutor, Executor
-from typing import List
+from typing import List, Union
 
 import aiohttp
 from bs4 import BeautifulSoup, element
@@ -26,7 +26,8 @@ class Pages:
     ACTIVE_SEARCHES = "https://lizaalert.org/forum/viewforum.php?f=276"
 
 
-def get_topics_info(page: BeautifulSoup):
+def parse_topics_list(content: Union[str, bytes], features="lxml"):
+    page = BeautifulSoup(content, features)
     topics_elements = page.select(TOPICS_SELECTOR)
     topics = []
     for topic_el in topics_elements:
@@ -46,7 +47,8 @@ def get_topics_info(page: BeautifulSoup):
     return topics
 
 
-def get_topic_posts(page: BeautifulSoup):
+def parse_topic_posts(content: Union[str, bytes], features="lxml"):
+    page = BeautifulSoup(content, features)
     posts_elements = page.select(POSTS_SELECTOR)
     posts = []
     for post_el in posts_elements:
@@ -81,8 +83,7 @@ if __name__ == "__main__":
         async with aiohttp.ClientSession() as session:
             async with session.get(Pages.ACTIVE_SEARCHES) as resp:
                 content = await resp.read()
-            page = BeautifulSoup(content, "lxml")
-            topics = get_topics_info(page)
+            topics = parse_topics_list(content)
             for topic in topics:
                 print(topic["title"])
                 print(topic["link"])
