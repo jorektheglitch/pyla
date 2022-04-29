@@ -94,11 +94,13 @@ def get_rows(el: element.Tag) -> List[str]:
 
 
 if __name__ == "__main__":
+    parse_topics_list_ = as_async(parse_topics_list, PARSING_EXECUTOR)
+
     async def main():
         async with aiohttp.ClientSession() as session:
             async with session.get(Pages.ACTIVE_SEARCHES) as resp:
                 content = await resp.read()
-            topics = parse_topics_list(content)
+            topics = await parse_topics_list_(content)
             for topic in topics:
                 print(topic["title"])
                 print(topic["link"])
