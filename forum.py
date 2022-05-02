@@ -37,6 +37,7 @@ T = TypeVar("T")
 class Pages:
     MAIN = "https://lizaalert.org/forum/"
     ACTIVE_SEARCHES = "https://lizaalert.org/forum/viewforum.php?f=276"
+    RSS = "https://lizaalert.org/forum/app.php/feed?f=276"
 
 
 def as_async(fn: Callable[..., T], executor: Optional[Executor] = None) -> Callable[..., Coroutine[Any, Any, T]]:
@@ -116,6 +117,32 @@ def parse_topic_posts(content: Union[str, bytes], features="lxml"):
     return posts
 
 
+def parse_feed(content: Union[str, bytes], features="xml"):
+    feed = BeautifulSoup(content, features).find("feed")
+    date = feed.find("updated")
+    feed_entries = feed.find_all("entry", recursive=False)
+    entries = []
+    for feed_entry in feed_entries:
+        entry = {}
+        author_info = feed_entry.find("author")
+        author_name = author_info.find("name")
+        category_info = feed_entry.find("category")
+        link = feed_entry.find("link")
+        title = feed_entry.find("title")
+        published = feed_entry.find("published")
+        updated = feed_entry.find("updated")
+        entry["published"] = published.text
+        entry["updated"] = updated.text
+        entry["author"] = author_name.text
+        entry["category"] = category = {}
+        entry["title"] = title.text
+        entry["link"] = link.text
+        category["title"] = category_info.attrs.get("label")
+        category["link"] = category_info.attrs.get("scheme")
+        entries.append(entry)
+    return
+
+
 def get_rows(el: element.Tag) -> List[str]:
     rows = []
     for child in el.children:
@@ -143,6 +170,10 @@ if __name__ == "__main__":
                 msg = topic["last_message"]
                 print(msg["time"], msg["from"])
                 print()
+            print()
+            async with session.get(Pages.RSS) as resp:
+                content = await resp.read()
+            feed = parse_feed(content)
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
